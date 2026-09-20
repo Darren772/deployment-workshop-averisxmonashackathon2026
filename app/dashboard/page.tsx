@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PlaceCard } from "@/components/PlaceCard";
-import { CUISINES, type Place } from "@/data/places";
+import { CUISINES, type PlaceWithWeather } from "@/data/places";
 
 /**
  * "use client" at the top makes this a Client Component: it ships to the
@@ -14,18 +14,23 @@ import { CUISINES, type Place } from "@/data/places";
  *
  *     browser  →  /api/places (server, holds the secret)  →  data
  *
- * The secret never leaves the server.
+ * The secret never leaves the server. The live weather on each card was
+ * fetched by the server from weatherapi.com using MAKAN_API_SECRET — this
+ * file never sees that key.
  */
 
 /** Shape of the JSON that /api/places sends back. */
 type PlacesResponse = {
   count: number;
   cuisine: string;
-  places: Place[];
+  /** ok:false means the weather lookup failed; the spots still load. */
+  weather: { ok: boolean; reason: string | null };
+  places: PlaceWithWeather[];
 };
 
 export default function DashboardPage() {
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<PlaceWithWeather[]>([]);
+  const [weatherNotice, setWeatherNotice] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState<string>("All");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +59,7 @@ export default function DashboardPage() {
 
         const data: PlacesResponse = await response.json();
         setPlaces(data.places);
+        setWeatherNotice(data.weather.ok ? null : data.weather.reason);
       } catch (caught) {
         // An aborted request isn't a real error — just a superseded one.
         if (caught instanceof DOMException && caught.name === "AbortError") return;
@@ -135,6 +141,14 @@ export default function DashboardPage() {
       {/* Success state */}
       {!isLoading && !error && (
         <>
+          {/* The spots loaded, but the weather API didn't answer. Worth
+              telling the user, without breaking the page. */}
+          {weatherNotice && (
+            <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-semibold">Weather unavailable.</span>{" "}
+              {weatherNotice}
+            </div>
+          )}
           <p className="mt-8 text-sm text-stone-500">
             {places.length} {places.length === 1 ? "spot" : "spots"}
             {cuisine !== "All" && ` · ${cuisine}`}

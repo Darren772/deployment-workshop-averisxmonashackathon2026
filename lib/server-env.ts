@@ -17,8 +17,11 @@
  */
 
 /**
- * The pretend third-party API key for our food data.
- * In a real app this would be a Google Places or Yelp key.
+ * A REAL API key for weatherapi.com, used by lib/weather.ts to look up live
+ * weather for each food spot's city.
+ *
+ * This is a genuine credential: if it leaks, someone else can spend your
+ * quota. Get a free one at https://www.weatherapi.com/signup.aspx
  */
 export function getMakanApiSecret(): string | undefined {
   return process.env.MAKAN_API_SECRET;
@@ -52,7 +55,8 @@ export const TRACKED_ENV_VARS = [
   {
     name: "MAKAN_API_SECRET",
     kind: "secret",
-    description: "Server-only API key. Never sent to the browser.",
+    description:
+      "Real weatherapi.com key. Used server-side for live weather; never sent to the browser.",
   },
   {
     name: "ADMIN_PASSWORD",

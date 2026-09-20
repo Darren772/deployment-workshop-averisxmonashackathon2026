@@ -9,7 +9,12 @@ It exists to teach four things you need for any real deployment:
 3. Protecting a route with a password
 4. **Environment variables** — which ones are secret, which ones leak to the browser, and why your app breaks after you deploy
 
-No database. No external APIs. No accounts to sign up for.
+No database. One real external API (live weather), so the secret you're
+protecting is an actual credential rather than a pretend one.
+
+**Before you start:** grab a free API key from
+[weatherapi.com/signup](https://www.weatherapi.com/signup.aspx) — no credit
+card, and the key works immediately.
 
 ---
 
@@ -18,10 +23,10 @@ No database. No external APIs. No accounts to sign up for.
 | Route | What it does | What it teaches |
 | --- | --- | --- |
 | `/` | Hero + links to the other pages, with a banner showing `NEXT_PUBLIC_APP_NAME` | Public env vars are visible in the browser |
-| `/dashboard` | Client page that fetches 12 food spots and filters them by cuisine | Browser → your API route → data |
+| `/dashboard` | Client page that fetches 12 food spots, each with **live weather**, filtered by cuisine | Browser → your API route → a keyed third-party API |
 | `/admin` | Fake stats behind HTTP Basic Auth (username `admin`) | Protecting a route before it renders |
 | `/status` | ✅ / ❌ for every env var, plus `VERCEL_ENV` and the commit SHA | Debugging a broken deploy |
-| `/api/places` | Server route that checks `MAKAN_API_SECRET`, then returns mocked data | Secrets stay on the server |
+| `/api/places` | Server route that calls weatherapi.com with `MAKAN_API_SECRET`, then returns spots + weather | Secrets stay on the server |
 | `/api/health` | `{ status, timestamp, env }` | Proving which deployment answered |
 
 ---
@@ -43,7 +48,12 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-`.env.local` already ships with working values in this repo, so step 2 is optional here — but in a real project it's the first thing you do.
+Then open `.env.local` and replace the `MAKAN_API_SECRET` placeholder with
+your weatherapi.com key.
+
+Without a valid key the app still runs — the food spots load and every page
+works, you just get a "Weather unavailable" note instead of temperatures.
+That's the graceful-degradation path, and it's worth seeing on purpose.
 
 To visit `/admin`, your browser will pop up a login box:
 
@@ -65,7 +75,7 @@ To visit `/admin`, your browser will pop up a login box:
 
 | Variable | Type | Used by | What happens if it's missing |
 | --- | --- | --- | --- |
-| `MAKAN_API_SECRET` | 🔒 Secret | `app/api/places/route.ts` | `/api/places` returns HTTP 500, `/dashboard` shows an error |
+| `MAKAN_API_SECRET` | 🔒 Secret | `lib/weather.ts` → weatherapi.com | `/api/places` returns HTTP 500, `/dashboard` shows an error |
 | `ADMIN_PASSWORD` | 🔒 Secret | `proxy.ts` | `/admin` returns HTTP 500 — nobody can get in |
 | `NEXT_PUBLIC_APP_NAME` | 🌍 Public | Header, landing banner | Falls back to `"MakanFinder"` |
 | `NEXT_PUBLIC_API_VERSION` | 🌍 Public | `X-Api-Version` header, footer | Falls back to `"unknown"` |
@@ -83,7 +93,16 @@ Plus two that **Vercel sets for you** — never add them yourself:
 
 ```
 NEXT_PUBLIC_APP_NAME=MakanFinder     ← fine, it's just a name
-NEXT_PUBLIC_STRIPE_SECRET=sk_live... ← 🚨 you just published your Stripe key
+NEXT_PUBLIC_MAKAN_API_SECRET=abc123  ← 🚨 you just published your weather key
+```
+
+Try it yourself: with the app running, open DevTools → Sources and search the
+JavaScript for your key. You won't find it — because `/dashboard` asks
+**our** server for weather, and only the server talks to weatherapi.com:
+
+```
+browser → /api/places → weatherapi.com
+                ↑ the key lives here, and only here
 ```
 
 Everything without the prefix stays on the server. In this repo they're separated on purpose:
@@ -126,7 +145,7 @@ Double-check that `.env.local` is **not** in the list `git add .` staged. It sho
 
 | Name | Value |
 | --- | --- |
-| `MAKAN_API_SECRET` | any random string |
+| `MAKAN_API_SECRET` | your weatherapi.com key |
 | `ADMIN_PASSWORD` | a password you'll remember |
 | `NEXT_PUBLIC_APP_NAME` | `MakanFinder` |
 | `NEXT_PUBLIC_API_VERSION` | `1.0.0` |
@@ -173,7 +192,12 @@ They're baked in at build time. Restart `npm run dev` locally, or redeploy on Ve
 `ADMIN_PASSWORD` isn't set. The app fails closed on purpose — better locked out than wide open.
 
 **`/dashboard` shows "Couldn't load food spots".**
-`MAKAN_API_SECRET` isn't set. Check `/status`.
+`MAKAN_API_SECRET` isn't set at all. Check `/status`.
+
+**Food spots load, but there's no weather and a "Weather unavailable" note.**
+The key is set but weatherapi.com rejected it — usually a typo, or you pasted
+the placeholder. The note tells you which. This is deliberate: a flaky
+third-party API degrades gracefully instead of taking the whole page down.
 
 **I can't log out of `/admin`.**
 Basic Auth has no logout. Close the browser or use a private window.
@@ -188,12 +212,13 @@ app/
   dashboard/page.tsx    "use client" — fetches from /api/places
   admin/page.tsx        protected by proxy.ts
   status/page.tsx       env var checklist
-  api/places/route.ts   reads MAKAN_API_SECRET, returns mocked data
+  api/places/route.ts   joins mocked spots with live weather
   api/health/route.ts   uptime check
 components/             SiteHeader, SiteFooter, PlaceCard
 data/places.ts          our "database": 12 hard-coded food spots
 lib/env.ts              public (NEXT_PUBLIC_) variables
 lib/server-env.ts       secrets — never import from a Client Component
+lib/weather.ts          calls weatherapi.com — holds the key, server-only
 proxy.ts                HTTP Basic Auth gate for /admin
 ```
 

@@ -1,4 +1,4 @@
-import type { Place } from "@/data/places";
+import type { PlaceWithWeather } from "@/data/places";
 
 /**
  * One food spot, rendered as a card.
@@ -6,8 +6,12 @@ import type { Place } from "@/data/places";
  * This component only receives data through props, so it works in both
  * Server and Client Components. The /dashboard page is a Client Component
  * and renders these with data it fetched from /api/places.
+ *
+ * `place.weather` is live data from weatherapi.com — but note this component
+ * knows nothing about that. It just renders whatever the server sent, and
+ * handles `null` for when the weather lookup didn't work.
  */
-export function PlaceCard({ place }: { place: Place }) {
+export function PlaceCard({ place }: { place: PlaceWithWeather }) {
   return (
     <article className="group flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
@@ -20,6 +24,18 @@ export function PlaceCard({ place }: { place: Place }) {
 
       <h3 className="mt-3 text-base font-semibold text-stone-900">{place.name}</h3>
       <p className="mt-0.5 text-sm text-stone-500">{place.area}</p>
+
+      {/* Live weather. Absent when the API call didn't succeed — the card
+          still renders fine, it just doesn't show this strip. */}
+      {place.weather && (
+        <p className="mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-900 ring-1 ring-sky-100">
+          <span aria-hidden className="text-sm">{place.weather.emoji}</span>
+          <span>{place.weather.tempC}°C</span>
+          <span className="text-sky-400" aria-hidden>·</span>
+          <span className="text-sky-700">{place.weather.condition}</span>
+          <span className="sr-only">right now</span>
+        </p>
+      )}
 
       <p className="mt-3 text-sm leading-relaxed text-stone-600">{place.blurb}</p>
 

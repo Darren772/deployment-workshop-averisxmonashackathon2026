@@ -9,12 +9,33 @@
  * which means the browser never downloads it.
  */
 
+/**
+ * The cities we look up weather for.
+ *
+ * Several food spots share a city (four are in KL), so we group by city and
+ * fetch the weather ONCE per city instead of once per spot. That turns 12
+ * upstream API calls into 7 — which matters when you're on a free API tier.
+ */
+export const CITIES = {
+  "kuala-lumpur": { label: "Kuala Lumpur", lat: 3.139, lon: 101.6869 },
+  "petaling-jaya": { label: "Petaling Jaya", lat: 3.1073, lon: 101.6067 },
+  "kajang": { label: "Kajang", lat: 2.9935, lon: 101.7874 },
+  "kuala-selangor": { label: "Kuala Selangor", lat: 3.3411, lon: 101.2493 },
+  "klang": { label: "Klang", lat: 3.0449, lon: 101.4455 },
+  "george-town": { label: "George Town", lat: 5.4141, lon: 100.3288 },
+  "melaka": { label: "Melaka", lat: 2.1896, lon: 102.2501 },
+} as const;
+
+export type CityKey = keyof typeof CITIES;
+
 /** The shape of a single food spot. */
 export type Place = {
   id: string;
   name: string;
   /** Neighbourhood + state, e.g. "Klang, Selangor" */
   area: string;
+  /** Which city we fetch live weather for. See CITIES above. */
+  city: CityKey;
   cuisine: Cuisine;
   /** What people actually queue up for. */
   signatureDish: string;
@@ -24,6 +45,23 @@ export type Place = {
   emoji: string;
   blurb: string;
 };
+
+/**
+ * Live weather for a city, trimmed to what a card needs.
+ *
+ * This type lives here (and not in lib/weather.ts) because the /dashboard
+ * Client Component needs it. lib/weather.ts holds the API key, so nothing
+ * that runs in the browser should import from it at all.
+ */
+export type Weather = {
+  tempC: number;
+  condition: string;
+  emoji: string;
+  isDay: boolean;
+};
+
+/** A food spot as /api/places returns it: our data plus live weather. */
+export type PlaceWithWeather = Place & { weather: Weather | null };
 
 /**
  * The cuisines we support filtering by.
@@ -47,6 +85,7 @@ export const places: Place[] = [
     id: "nasi-lemak-antarabangsa",
     name: "Nasi Lemak Antarabangsa",
     area: "Kampung Baru, Kuala Lumpur",
+    city: "kuala-lumpur",
     cuisine: "Malay",
     signatureDish: "Nasi Lemak Ayam Rendang",
     rating: 4.7,
@@ -58,6 +97,7 @@ export const places: Place[] = [
     id: "village-park",
     name: "Village Park Restaurant",
     area: "Damansara Uptown, Petaling Jaya",
+    city: "petaling-jaya",
     cuisine: "Malay",
     signatureDish: "Nasi Lemak Ayam Goreng",
     rating: 4.7,
@@ -69,6 +109,7 @@ export const places: Place[] = [
     id: "satay-kajang-haji-samuri",
     name: "Satay Kajang Haji Samuri",
     area: "Kajang, Selangor",
+    city: "kajang",
     cuisine: "Malay",
     signatureDish: "Satay Daging & Ayam",
     rating: 4.5,
@@ -80,6 +121,7 @@ export const places: Place[] = [
     id: "warung-ikan-bakar-muara",
     name: "Warung Ikan Bakar Muara",
     area: "Kuala Selangor, Selangor",
+    city: "kuala-selangor",
     cuisine: "Malay",
     signatureDish: "Ikan Pari Bakar",
     rating: 4.3,
@@ -91,6 +133,7 @@ export const places: Place[] = [
     id: "seng-huat-bak-kut-teh",
     name: "Seng Huat Bak Kut Teh",
     area: "Klang, Selangor",
+    city: "klang",
     cuisine: "Chinese",
     signatureDish: "Dry Bak Kut Teh",
     rating: 4.6,
@@ -102,6 +145,7 @@ export const places: Place[] = [
     id: "lorong-selamat-ckt",
     name: "Lorong Selamat Char Kway Teow",
     area: "George Town, Penang",
+    city: "george-town",
     cuisine: "Chinese",
     signatureDish: "Char Kway Teow",
     rating: 4.8,
@@ -113,6 +157,7 @@ export const places: Place[] = [
     id: "kim-lian-kee",
     name: "Kim Lian Kee Hokkien Mee",
     area: "Petaling Street, Kuala Lumpur",
+    city: "kuala-lumpur",
     cuisine: "Chinese",
     signatureDish: "Hokkien Mee",
     rating: 4.4,
@@ -124,6 +169,7 @@ export const places: Place[] = [
     id: "yut-kee",
     name: "Restoran Yut Kee",
     area: "Jalan Kamunting, Kuala Lumpur",
+    city: "kuala-lumpur",
     cuisine: "Chinese",
     signatureDish: "Hainanese Chicken Chop",
     rating: 4.5,
@@ -135,6 +181,7 @@ export const places: Place[] = [
     id: "nasi-kandar-pelita",
     name: "Restoran Nasi Kandar Pelita",
     area: "Jalan Ampang, Kuala Lumpur",
+    city: "kuala-lumpur",
     cuisine: "Indian",
     signatureDish: "Nasi Kandar Campur",
     rating: 4.4,
@@ -146,6 +193,7 @@ export const places: Place[] = [
     id: "valentine-roti",
     name: "Valentine Roti",
     area: "Jalan Semarak, Kuala Lumpur",
+    city: "kuala-lumpur",
     cuisine: "Mamak",
     signatureDish: "Roti Canai Banjir",
     rating: 4.5,
@@ -157,6 +205,7 @@ export const places: Place[] = [
     id: "donald-and-lily",
     name: "Donald & Lily's",
     area: "Melaka",
+    city: "melaka",
     cuisine: "Nyonya",
     signatureDish: "Nyonya Laksa",
     rating: 4.6,
@@ -168,6 +217,7 @@ export const places: Place[] = [
     id: "penang-road-chendul",
     name: "Penang Road Famous Teochew Chendul",
     area: "George Town, Penang",
+    city: "george-town",
     cuisine: "Dessert",
     signatureDish: "Cendol with Gula Melaka",
     rating: 4.4,
