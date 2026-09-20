@@ -106,6 +106,14 @@ Adding a fifth variable means updating: `.env.example`, `.env.local`, `TRACKED_E
 
 Tailwind v4 (CSS-first, configured via `@theme` in `app/globals.css` — there is no `tailwind.config.js`). Stock `stone`/`amber` palette only, so beginners can look up every class. The app deliberately **does not** follow OS dark mode — one fixed light theme so every laptop in the room renders identically. Don't add a `prefers-color-scheme` block back.
 
+## Vercel
+
+`vercel.json` pins `framework`, `buildCommand` and `devCommand`. It exists
+because a deployment was once configured to run `npm run dev`: `next dev` never
+exits, so the build hangs, and it also emits a "non-standard NODE_ENV" warning
+since Vercel builds with `NODE_ENV=production`. vercel.json overrides the
+dashboard, so don't remove it to "let Vercel autodetect".
+
 ## README
 
 `README.md` is workshop material that attendees read start-to-finish. Keep the Deploy-to-Vercel steps and the troubleshooting section in sync with any behaviour change.

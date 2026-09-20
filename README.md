@@ -139,6 +139,13 @@ Double-check that `.env.local` is **not** in the list `git add .` staged. It sho
 2. Find your repository and click **Import**.
 3. Vercel detects Next.js automatically. **Don't change the build settings.**
 
+> ⚠️ If you ever put `npm run dev` in the **Build Command** box, the deploy
+> will hang or fail: `next dev` starts a server that never exits, so the build
+> never finishes. You'll also see a "non-standard NODE_ENV" warning, because
+> Vercel builds with `NODE_ENV=production` while `next dev` expects
+> `development`. `vercel.json` in this repo pins the right commands, which
+> overrides whatever the dashboard says.
+
 ### Step 3 — Add your environment variables ⚠️
 
 **This is the step everyone forgets.** Before clicking Deploy, expand **Environment Variables** and add all four:
@@ -191,6 +198,11 @@ They're baked in at build time. Restart `npm run dev` locally, or redeploy on Ve
 **`/admin` gives a 500 instead of a password prompt.**
 `ADMIN_PASSWORD` isn't set. The app fails closed on purpose — better locked out than wide open.
 
+**My deploy hangs, times out, or logs `Running "npm run dev"`.**
+The Build Command is wrong — it must be `next build`, never `npm run dev`.
+Fix it in Settings → Build & Output Settings (clear the override), or rely on
+`vercel.json`, which sets it for you. Then redeploy.
+
 **`/dashboard` shows "Couldn't load food spots".**
 `MAKAN_API_SECRET` isn't set at all. Check `/status`.
 
@@ -220,6 +232,7 @@ lib/env.ts              public (NEXT_PUBLIC_) variables
 lib/server-env.ts       secrets — never import from a Client Component
 lib/weather.ts          calls weatherapi.com — holds the key, server-only
 proxy.ts                HTTP Basic Auth gate for /admin
+vercel.json             pins framework + build command for deploys
 ```
 
 > **Note on `proxy.ts`:** older tutorials call this file `middleware.ts` and export a `middleware` function. Next.js 16 renamed the convention to `proxy.ts` / `proxy`. The behaviour is identical.
