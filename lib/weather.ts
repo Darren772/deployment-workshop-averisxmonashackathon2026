@@ -32,8 +32,13 @@ function conditionEmoji(code: number, isDay: boolean): string {
   if (code === 1000) return isDay ? "☀️" : "🌙";
   if (code === 1003) return isDay ? "⛅" : "☁️";
   if (code === 1006 || code === 1009) return "☁️";
-  if (code === 1030 || code === 1135 || code === 1147) return "🌫️";
+  // Mist, haze and fog. 1036 (smoky haze) shows up in Malaysia a lot.
+  if (code === 1030 || code === 1036 || code === 1135 || code === 1147) return "🌫️";
+  // Thunder first — 1273+ outranks the shower ranges below.
   if (code >= 1273) return "⛈️";
+  // 1240-1246 are RAIN showers. They sit inside the snow numbering, so they
+  // have to be checked before the 1210-1264 snow/sleet range.
+  if (code >= 1240 && code <= 1246) return "🌧️";
   if (code >= 1210 && code <= 1264) return "🌨️";
   if (code >= 1063) return "🌧️";
   return "🌤️";
